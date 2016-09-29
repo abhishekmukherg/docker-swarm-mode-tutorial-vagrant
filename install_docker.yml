@@ -1,0 +1,25 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: Update package information, ensure that APT works with the https method, and that CA certificates are installed
+      apt: name={{ item }} state=latest
+      with_items:
+        - apt-transport-https
+        - ca-certificates
+    - name: Add the new GPG key
+      apt_key: keyserver=hkp://p80.pool.sks-keyservers.net:80 id=58118E89F3A912897C070ADBF76221572C52609D
+    - name: Set up the new repository
+      apt_repository: repo='deb https://apt.dockerproject.org/repo ubuntu-trusty main' state=present filename=docker
+    - name: purge old docker in case
+      apt: name=lxc-docker state=absent purge=yes
+    - name: install linux-image-extra kernels
+      apt: name={{ item }} state=latest
+      with_items:
+        - linux-image-extra-{{ ansible_kernel }}
+        - linux-image-extra-virtual
+        - docker-engine
+    - name: start the docker daemon
+      service: name=docker state=started enabled=yes
+    - name: verify docker is running
+      command: docker run hello-world
